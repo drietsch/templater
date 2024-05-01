@@ -6,6 +6,11 @@ import subprocess
 from urllib.parse import urlparse
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import time
 
 st.set_page_config(layout="wide")
 
@@ -53,6 +58,7 @@ def take_screenshot(url, save_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--hide-scrollbars")
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(url)
@@ -63,7 +69,20 @@ def take_screenshot(url, save_path):
     # Refresh the page with the cookie set
     driver.get(url)
 
-    driver.set_window_size(1920, 1080)  # Adjust as necessary
+    # Wait for the page to load completely
+    WebDriverWait(driver, 500).until(
+        EC.presence_of_element_located((By.TAG_NAME, "html"))
+    )
+
+
+
+    # Calculate the total height of the web page and resize the browser window
+    total_height = driver.execute_script("return document.body.getBoundingClientRect().height")
+    driver.set_window_size(1920, total_height)  # Width is set to 1920px, height is set to the total height of the page
+    
+    time.sleep(3)
+    
+    # Take screenshot of the entire page
     driver.save_screenshot(save_path)
     driver.quit()
 
@@ -79,12 +98,13 @@ def main():
             start_http_server(base_dir)  # Ensure the HTTP server is running
             if main_html_path:
                 st.success(f"All files have been saved successfully to {base_dir}!")
-                local_url = f"http://localhost:8000/{os.path.relpath(main_html_path, base_dir)}"
+                local_url = f"https://shiny-zebra-g4qqrx7qrf6r5-8000.app.github.dev/{os.path.relpath(main_html_path, base_dir)}"
                 st.markdown(f"### Main HTML Preview:")
                 st.markdown(f'<iframe src="{local_url}" width="100%" height="500"></iframe>', unsafe_allow_html=True)
                 # Take a screenshot
                 screenshot_path = os.path.join(base_dir, "screenshot.png")
-                take_screenshot(local_url, screenshot_path)
+                local_url_screenshot = f"http://localhost:8000/{os.path.relpath(main_html_path, base_dir)}"
+                take_screenshot(local_url_screenshot, screenshot_path)
                 st.info(f"Screenshot saved to {screenshot_path}")
             else:
                 st.error("No HTML file found in the HAR data.")
